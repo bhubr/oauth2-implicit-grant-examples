@@ -43,18 +43,46 @@ function getAccessTokenFromLocationHash() {
   return matches && matches[1];
 }
 
-const mapItem = ({ id, href, name, images }) => ({
-  id,
-  title: name,
-  thumbnail: images[2].url,
-  href
-});
+
+const strategies = {
+  albums: {
+    mapItem: function({ id, href, name, images }) {
+      return ({
+        id,
+        title: name,
+        thumbnail: images && images[2].url,
+        href
+      });
+    },
+    mapItems: function({ albums }) {
+      return albums.items.map(this.mapItem);
+    }
+  },
+  tracks: {
+    mapItem: function({ track: { id, href, name, album: { images } } }) {
+      return ({
+        id,
+        title: name,
+        thumbnail: images[2].url,
+        href
+      });
+    },
+    mapItems: function({ tracks }) {
+      return tracks.items.map(this.mapItem);
+    }
+  }
+}
 
 const accessToken = getAccessTokenFromLocationHash();
 if (!accessToken) {
   oauthSignIn();
 } else {
-  fetch('https://api.spotify.com/v1/browse/new-releases', {
+  // const url = 'https://api.spotify.com/v1/browse/new-releases';
+  // const strategy = 'albums';
+  const url = 'https://api.spotify.com/v1/playlists/37i9dQZEVXbMDoHDwVN2tF';
+  const strategy = 'tracks';
+
+  fetch(url, {
     headers: {
       authorization: `Bearer ${accessToken}`
     }
@@ -63,7 +91,7 @@ if (!accessToken) {
     console.log(res.ok ? 'OK' : 'NOK');
     return res.json();
   })
-  .then(({ albums }) => albums.items.map(mapItem))
+  .then(data => strategies[strategy].mapItems(data))
   .then(albums => {
     for (let a of albums) {
       const el = document.createElement('div');
